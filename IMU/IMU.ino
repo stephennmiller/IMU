@@ -1,6 +1,6 @@
 #include <Wire.h>
 
-const uint8_t MPU6050_ADDR = 0x68;
+uint8_t mpuAddr = 0x68;
 
 // MPU-6050 register addresses
 const uint8_t REG_PWR_MGMT_1  = 0x6B;
@@ -42,6 +42,7 @@ const uint8_t STALE_THRESHOLD = 10;
 // I2C error tracking
 uint8_t i2cErrors = 0;
 const uint8_t I2C_ERROR_THRESHOLD = 5;
+bool imuOk = true;
 
 void setup() {
   Serial.begin(115200);
@@ -85,9 +86,10 @@ void setup() {
     while (1);
   }
 
-  if (foundAddr != MPU6050_ADDR) {
+  mpuAddr = foundAddr;
+  if (mpuAddr != 0x68) {
     Serial.print(F("MPU-6050 at alternate address 0x"));
-    Serial.println(foundAddr, HEX);
+    Serial.println(mpuAddr, HEX);
   }
 
   // Initialize MPU-6050
@@ -98,7 +100,10 @@ void setup() {
 
   // Calibrate — keep sensor flat and still
   Serial.println(F("Calibrating... keep sensor FLAT and STILL."));
-  calibrate(2000);
+  if (!calibrate(2000)) {
+    Serial.println(F("Calibration failed — no valid samples. Halting."));
+    while (1);
+  }
   Serial.println(F("Calibration complete."));
 
   Serial.println(F("MPU-6050 ready."));
@@ -108,6 +113,13 @@ void setup() {
 }
 
 void loop() {
+  if (!imuOk) {
+    Serial.println(F("IMU offline — attempting recovery"));
+    recoverI2C();
+    delay(1000);
+    return;
+  }
+
   if (!readSensor()) {
     i2cErrors++;
     if (i2cErrors >= I2C_ERROR_THRESHOLD) {
@@ -183,11 +195,11 @@ bool initMPU() {
   delay(100);
 
   // Verify WHO_AM_I
-  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.beginTransmission(mpuAddr);
   Wire.write(REG_WHO_AM_I);
   if (Wire.endTransmission(false) != 0) return false;
 
-  if (Wire.requestFrom(MPU6050_ADDR, (uint8_t)1) != 1) return false;
+  if (Wire.requestFrom(mpuAddr, (uint8_t)1) != 1) return false;
 
   uint8_t whoAmI = Wire.read();
   if (whoAmI != 0x68) {
@@ -198,15 +210,15 @@ bool initMPU() {
   }
   Serial.println(F("WHO_AM_I verified (0x68)."));
 
-  writeRegister(REG_ACCEL_CONFIG, 0x10); // +-8g
-  writeRegister(REG_GYRO_CONFIG, 0x10);  // +-1000 deg/s
-  writeRegister(REG_DLPF_CONFIG, 0x03);  // DLPF ~44 Hz
+  if (!writeRegister(REG_ACCEL_CONFIG, 0x10)) return false; // +-8g
+  if (!writeRegister(REG_GYRO_CONFIG, 0x10))  return false; // +-1000 deg/s
+  if (!writeRegister(REG_DLPF_CONFIG, 0x03))  return false; // DLPF ~44 Hz
 
   return true;
 }
 
 // Calibrate by averaging samples at rest. Assumes sensor is flat (Z = +1g).
-void calibrate(int samples) {
+bool calibrate(int samples) {
   long axSum = 0, aySum = 0, azSum = 0;
   long gxSum = 0, gySum = 0, gzSum = 0;
   int valid = 0;
@@ -221,8 +233,7 @@ void calibrate(int samples) {
   }
 
   if (valid == 0) {
-    Serial.println(F("Calibration failed — no valid samples."));
-    return;
+    return false;
   }
 
   axOffset = (float)axSum / valid;
@@ -235,15 +246,17 @@ void calibrate(int samples) {
   Serial.print(F("Calibrated with "));
   Serial.print(valid);
   Serial.println(F(" samples."));
+
+  return true;
 }
 
 // Read all 6 axes + temperature, returns false on I2C error
 bool readSensor() {
-  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.beginTransmission(mpuAddr);
   Wire.write(REG_ACCEL_XOUT_H);
   if (Wire.endTransmission(false) != 0) return false;
 
-  uint8_t received = Wire.requestFrom(MPU6050_ADDR, (uint8_t)14);
+  uint8_t received = Wire.requestFrom(mpuAddr, (uint8_t)14);
   if (received != 14) {
     while (Wire.available()) Wire.read(); // flush partial data
     return false;
@@ -261,7 +274,7 @@ bool readSensor() {
 }
 
 bool writeRegister(uint8_t reg, uint8_t value) {
-  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.beginTransmission(mpuAddr);
   Wire.write(reg);
   Wire.write(value);
   return (Wire.endTransmission() == 0);
@@ -301,6 +314,11 @@ void recoverI2C() {
   Wire.begin();
   Wire.setClock(100000);
   delay(50);
-  initMPU();
-  staleCount = 0;
+
+  imuOk = initMPU();
+  if (imuOk) {
+    staleCount = 0;
+  } else {
+    Serial.println(F("Recovery failed — initMPU returned error"));
+  }
 }
