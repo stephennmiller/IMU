@@ -1,6 +1,6 @@
 # MPU-6050 IMU Reader
 
-Arduino sketch that reads accelerometer, gyroscope, and temperature data from an MPU-6050 over I2C, computes roll/pitch/yaw orientation using a complementary filter, and streams the results over serial.
+Arduino class that reads accelerometer, gyroscope, and temperature data from an MPU-6050 over I2C, computes roll/pitch/yaw orientation using a complementary filter, and streams the results over serial. The `IMU` class in `IMU.h` is self-contained and non-blocking; `IMU.ino` is a thin demo sketch that prints sensor data at ~10 Hz.
 
 ## Hardware
 
@@ -24,11 +24,12 @@ The sketch auto-detects the MPU-6050 at address `0x68` or `0x69`.
 - **WHO_AM_I verification** — confirms the device identity register reads `0x68` before proceeding
 - **Startup calibration** — averages 2000 samples at rest to compute per-axis offsets; subtracts 1g from Z so gravity reads correctly
 - **Complementary filter** — fuses gyro (short-term) and accelerometer (long-term) data with a 96/4 weighting for stable roll and pitch
-- **Gyro-only yaw** — integrates Z-axis gyro for yaw (drifts over time without a magnetometer)
+- **Gyro-only yaw** — integrates Z-axis gyro for yaw, normalized to +-180 degrees (drifts over time without a magnetometer)
 - **Temperature reading** — converts the on-chip temperature sensor to Celsius using the datasheet formula
 - **I2C error tracking** — counts consecutive read failures; triggers bus recovery after 5 errors
 - **Stale data detection** — flags when all 6 axes return identical values for 10 consecutive reads and triggers recovery
-- **Bit-bang SCL recovery** — clocks SCL 9 times to release a slave holding SDA low, then generates a STOP condition per the I2C spec
+- **Non-blocking sampling** — uses `millis()`-based timing so `update()` never blocks the main loop
+- **Bit-bang SCL recovery** — clocks SCL up to 9 times on the platform's SCL/SDA pins to release a slave holding SDA low, then generates a STOP condition per the I2C spec
 - **Full bus recovery** — combines bit-bang recovery with Wire reinit and MPU reinitialization to restore communication
 - **AVR Wire timeout** — sets a 25ms I2C timeout with automatic bus reset on AVR platforms to prevent hangs
 - **Large dt rejection** — discards time deltas over 500ms to avoid orientation jumps after delays or recovery
@@ -49,7 +50,7 @@ The sketch auto-detects the MPU-6050 at address `0x68` or `0x69`.
 AccX(g)  AccY(g)  AccZ(g)  Gx(d/s)  Gy(d/s)  Gz(d/s)  Roll  Pitch  Yaw  Temp(C)
 ```
 
-Output rate is approximately 10 Hz (100ms loop delay).
+Output rate is approximately 10 Hz (100ms non-blocking sample interval).
 
 ## Build
 
