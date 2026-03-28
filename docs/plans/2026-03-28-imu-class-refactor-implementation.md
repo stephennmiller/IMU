@@ -12,7 +12,7 @@
 
 ---
 
-### Task 1: Create IMU.h with class skeleton and public API
+## Task 1: Create IMU.h with class skeleton and public API
 
 **Files:**
 - Create: `IMU/IMU.h`
@@ -140,7 +140,7 @@ git commit -m "Add IMU class skeleton with public API and private members"
 
 ---
 
-### Task 2: Implement begin() -- Wire init, bus scan, MPU init, calibration
+## Task 2: Implement begin() -- Wire init, bus scan, MPU init, calibration
 
 **Files:**
 - Modify: `IMU/IMU.h`
@@ -237,7 +237,7 @@ git commit -m "Implement IMU::begin() with bus scan, init, and calibration"
 
 ---
 
-### Task 3: Implement private helper methods (initMPU, calibrate, readSensor, writeRegister)
+## Task 3: Implement private helper methods (initMPU, calibrate, readSensor, writeRegister)
 
 **Files:**
 - Modify: `IMU/IMU.h`
@@ -343,7 +343,7 @@ git commit -m "Implement IMU private helpers: initMPU, calibrate, readSensor, wr
 
 ---
 
-### Task 4: Implement bitBangRecover() and recoverI2C() with portable pins
+## Task 4: Implement bitBangRecover() and recoverI2C() with portable pins
 
 **Files:**
 - Modify: `IMU/IMU.h`
@@ -406,7 +406,7 @@ git commit -m "Implement bitBangRecover with portable SDA/SCL pins and recoverI2
 
 ---
 
-### Task 5: Implement update() with non-blocking timing
+## Task 5: Implement update() with non-blocking timing
 
 **Files:**
 - Modify: `IMU/IMU.h`
@@ -502,7 +502,7 @@ git commit -m "Implement non-blocking IMU::update() with millis()-based timing"
 
 ---
 
-### Task 6: Rewrite IMU.ino as thin demo sketch
+## Task 6: Rewrite IMU.ino as thin demo sketch
 
 **Files:**
 - Modify: `IMU/IMU.ino`
@@ -566,7 +566,7 @@ git commit -m "Rewrite IMU.ino as thin demo sketch using IMU class"
 
 ---
 
-### Task 7: Final review and verification
+## Task 7: Final review and verification
 
 **Files:**
 - Review: `IMU/IMU.h`, `IMU/IMU.ino`
