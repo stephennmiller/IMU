@@ -182,4 +182,93 @@ inline bool IMU::begin() {
     return true;
 }
 
+inline bool IMU::initMPU() {
+    if (!writeRegister(REG_PWR_MGMT_1, 0x00)) return false;
+    delay(100);
+
+    // Verify WHO_AM_I
+    Wire.beginTransmission(_addr);
+    Wire.write(REG_WHO_AM_I);
+    if (Wire.endTransmission(false) != 0) return false;
+
+    if (Wire.requestFrom(_addr, (uint8_t)1) != 1) return false;
+
+    uint8_t whoAmI = Wire.read();
+    if (whoAmI != 0x68) {
+        Serial.print(F("WHO_AM_I = 0x"));
+        Serial.print(whoAmI, HEX);
+        Serial.println(F(" (expected 0x68)"));
+        return false;
+    }
+    Serial.println(F("WHO_AM_I verified (0x68)."));
+
+    if (!writeRegister(REG_ACCEL_CONFIG, 0x10)) return false; // +-8g
+    if (!writeRegister(REG_GYRO_CONFIG, 0x10))  return false; // +-1000 deg/s
+    if (!writeRegister(REG_DLPF_CONFIG, 0x03))  return false; // DLPF ~44 Hz
+
+    return true;
+}
+
+inline bool IMU::calibrate(int samples) {
+    long axSum = 0, aySum = 0, azSum = 0;
+    long gxSum = 0, gySum = 0, gzSum = 0;
+    int valid = 0;
+
+    for (int i = 0; i < samples; i++) {
+        if (readSensor()) {
+            axSum += _rawAccX; aySum += _rawAccY; azSum += _rawAccZ;
+            gxSum += _rawGyroX; gySum += _rawGyroY; gzSum += _rawGyroZ;
+            valid++;
+        }
+        delay(1);
+    }
+
+    if (valid == 0) {
+        return false;
+    }
+
+    _axOff = (float)axSum / valid;
+    _ayOff = (float)aySum / valid;
+    _azOff = (float)azSum / valid - ACCEL_SCALE; // subtract 1g on Z
+    _gxOff = (float)gxSum / valid;
+    _gyOff = (float)gySum / valid;
+    _gzOff = (float)gzSum / valid;
+
+    Serial.print(F("Calibrated with "));
+    Serial.print(valid);
+    Serial.println(F(" samples."));
+
+    return true;
+}
+
+inline bool IMU::readSensor() {
+    Wire.beginTransmission(_addr);
+    Wire.write(REG_ACCEL_XOUT_H);
+    if (Wire.endTransmission(false) != 0) return false;
+
+    uint8_t received = Wire.requestFrom(_addr, (uint8_t)14);
+    if (received != 14) {
+        while (Wire.available()) Wire.read(); // flush partial data
+        return false;
+    }
+
+    uint8_t hi, lo;
+    hi = Wire.read(); lo = Wire.read(); _rawAccX  = (int16_t)(((uint16_t)hi << 8) | lo);
+    hi = Wire.read(); lo = Wire.read(); _rawAccY  = (int16_t)(((uint16_t)hi << 8) | lo);
+    hi = Wire.read(); lo = Wire.read(); _rawAccZ  = (int16_t)(((uint16_t)hi << 8) | lo);
+    hi = Wire.read(); lo = Wire.read(); _rawTemp  = (int16_t)(((uint16_t)hi << 8) | lo);
+    hi = Wire.read(); lo = Wire.read(); _rawGyroX = (int16_t)(((uint16_t)hi << 8) | lo);
+    hi = Wire.read(); lo = Wire.read(); _rawGyroY = (int16_t)(((uint16_t)hi << 8) | lo);
+    hi = Wire.read(); lo = Wire.read(); _rawGyroZ = (int16_t)(((uint16_t)hi << 8) | lo);
+
+    return true;
+}
+
+inline bool IMU::writeRegister(uint8_t reg, uint8_t value) {
+    Wire.beginTransmission(_addr);
+    Wire.write(reg);
+    Wire.write(value);
+    return (Wire.endTransmission() == 0);
+}
+
 #endif // IMU_H
