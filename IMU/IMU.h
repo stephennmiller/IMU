@@ -309,6 +309,7 @@ inline void IMU::recoverI2C() {
     _ok = initMPU();
     if (_ok) {
         _staleCount = 0;
+        _i2cErrors = 0;
     } else {
         Serial.println(F("Recovery failed — initMPU returned error"));
     }
