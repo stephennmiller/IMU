@@ -144,7 +144,7 @@ inline bool IMU::begin() {
         }
     }
     if (deviceCount == 0) {
-        Serial.println(F("No I2C devices found! Check wiring: SDA->A4, SCL->A5, VCC->5V, GND->GND"));
+        Serial.println(F("No I2C devices found! Check wiring: SDA, SCL, VCC->5V, GND->GND"));
         return false;
     }
     Serial.print(deviceCount);
@@ -337,7 +337,6 @@ inline bool IMU::update() {
         if (_i2cErrors >= I2C_ERROR_THRESHOLD) {
             Serial.println(F("I2C errors — recovering bus"));
             recoverI2C();
-            _i2cErrors = 0;
         }
         return false;
     }
