@@ -314,4 +314,78 @@ inline void IMU::recoverI2C() {
     }
 }
 
+inline bool IMU::update() {
+    unsigned long now = millis();
+
+    // If IMU is offline, attempt recovery at intervals
+    if (!_ok) {
+        if (now - _lastRecoveryAttempt < RECOVERY_INTERVAL_MS) return false;
+        Serial.println(F("IMU offline — attempting recovery"));
+        _lastRecoveryAttempt = now;
+        recoverI2C();
+        return false;
+    }
+
+    // Non-blocking sample interval
+    if (now - _lastSampleTime < SAMPLE_INTERVAL_MS) return false;
+    _lastSampleTime = now;
+
+    // Read sensor data
+    if (!readSensor()) {
+        _i2cErrors++;
+        if (_i2cErrors >= I2C_ERROR_THRESHOLD) {
+            Serial.println(F("I2C errors — recovering bus"));
+            recoverI2C();
+            _i2cErrors = 0;
+        }
+        return false;
+    }
+    _i2cErrors = 0;
+
+    // Stale data detection
+    if (_rawAccX == _prevAccX && _rawAccY == _prevAccY && _rawAccZ == _prevAccZ &&
+        _rawGyroX == _prevGyroX && _rawGyroY == _prevGyroY && _rawGyroZ == _prevGyroZ) {
+        _staleCount++;
+    } else {
+        _staleCount = 0;
+    }
+    _prevAccX = _rawAccX; _prevAccY = _rawAccY; _prevAccZ = _rawAccZ;
+    _prevGyroX = _rawGyroX; _prevGyroY = _rawGyroY; _prevGyroZ = _rawGyroZ;
+
+    if (_staleCount >= STALE_THRESHOLD) {
+        Serial.println(F("Stale data — recovering bus"));
+        recoverI2C();
+        _staleCount = 0;
+        return false;
+    }
+
+    // Convert to physical units with calibration offsets
+    _accX = (_rawAccX - _axOff) / ACCEL_SCALE;
+    _accY = (_rawAccY - _ayOff) / ACCEL_SCALE;
+    _accZ = (_rawAccZ - _azOff) / ACCEL_SCALE;
+
+    _gyroX = (_rawGyroX - _gxOff) / GYRO_SCALE;
+    _gyroY = (_rawGyroY - _gyOff) / GYRO_SCALE;
+    _gyroZ = (_rawGyroZ - _gzOff) / GYRO_SCALE;
+
+    // Temperature formula from datasheet
+    _tempC = (_rawTemp / 340.0) + 36.53;
+
+    // Time delta
+    float dt = (now - _prevFilterTime) / 1000.0;
+    _prevFilterTime = now;
+    if (dt > 0.5) dt = 0.0; // reject unreasonable gaps
+
+    // Accelerometer-based angles
+    float accelRoll  = atan2(_accY, sqrt(_accX * _accX + _accZ * _accZ)) * 180.0 / PI;
+    float accelPitch = atan2(-_accX, sqrt(_accY * _accY + _accZ * _accZ)) * 180.0 / PI;
+
+    // Complementary filter: trust gyro short-term, accel long-term
+    _roll  = ALPHA * (_roll  + _gyroX * dt) + (1.0 - ALPHA) * accelRoll;
+    _pitch = ALPHA * (_pitch + _gyroY * dt) + (1.0 - ALPHA) * accelPitch;
+    _yaw  += _gyroZ * dt; // no accel correction for yaw (needs magnetometer)
+
+    return true;
+}
+
 #endif // IMU_H
