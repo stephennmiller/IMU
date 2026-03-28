@@ -266,13 +266,13 @@ bool readSensor() {
   }
 
   uint8_t hi, lo;
-  hi = Wire.read(); lo = Wire.read(); rawAccX  = (hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawAccY  = (hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawAccZ  = (hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawTemp  = (hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawGyroX = (hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawGyroY = (hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawGyroZ = (hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawAccX  = ((uint16_t)hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawAccY  = ((uint16_t)hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawAccZ  = ((uint16_t)hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawTemp  = ((uint16_t)hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawGyroX = ((uint16_t)hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawGyroY = ((uint16_t)hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawGyroZ = ((uint16_t)hi << 8) | lo;
 
   return true;
 }
