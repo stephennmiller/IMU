@@ -110,4 +110,76 @@ private:
     bool _ok;
 };
 
+// ---------------------------------------------------------------------------
+// Inline implementations
+// ---------------------------------------------------------------------------
+
+inline bool IMU::begin() {
+    Serial.println(F("Starting IMU..."));
+
+    // Recover I2C bus in case MPU is stuck from a previous session
+    bitBangRecover();
+
+    Wire.begin();
+    Wire.setClock(100000);
+#if defined(ARDUINO_ARCH_AVR)
+    Wire.setWireTimeout(25000, true);
+#endif
+    delay(100);
+
+    // Scan I2C bus for devices
+    Serial.println(F("Scanning I2C bus..."));
+    uint8_t foundAddr = 0;
+    uint8_t deviceCount = 0;
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        if (Wire.endTransmission() == 0) {
+            Serial.print(F("  Device found at 0x"));
+            if (addr < 16) Serial.print('0');
+            Serial.println(addr, HEX);
+            deviceCount++;
+            if (addr == 0x68 || addr == 0x69) {
+                foundAddr = addr;
+            }
+        }
+    }
+    if (deviceCount == 0) {
+        Serial.println(F("No I2C devices found! Check wiring: SDA->A4, SCL->A5, VCC->5V, GND->GND"));
+        return false;
+    }
+    Serial.print(deviceCount);
+    Serial.println(F(" device(s) found."));
+
+    if (foundAddr == 0) {
+        Serial.println(F("No MPU-6050 found (expected 0x68 or 0x69)."));
+        return false;
+    }
+
+    _addr = foundAddr;
+    if (_addr != 0x68) {
+        Serial.print(F("MPU-6050 at alternate address 0x"));
+        Serial.println(_addr, HEX);
+    }
+
+    // Initialize MPU-6050
+    if (!initMPU()) {
+        Serial.println(F("MPU-6050 init failed!"));
+        return false;
+    }
+
+    // Calibrate — keep sensor flat and still
+    Serial.println(F("Calibrating... keep sensor FLAT and STILL."));
+    if (!calibrate(2000)) {
+        Serial.println(F("Calibration failed — no valid samples."));
+        return false;
+    }
+    Serial.println(F("Calibration complete."));
+
+    Serial.println(F("MPU-6050 ready."));
+
+    _prevFilterTime = millis();
+    _ok = true;
+    return true;
+}
+
 #endif // IMU_H
