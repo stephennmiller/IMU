@@ -56,6 +56,9 @@ void setup() {
 
   Wire.begin();
   Wire.setClock(100000);
+#if defined(ARDUINO_ARCH_AVR)
+  Wire.setWireTimeout(25000, true);  // 25ms timeout, reset bus on timeout
+#endif
   delay(100);
 
   // Scan I2C bus for devices
@@ -313,6 +316,9 @@ void recoverI2C() {
   bitBangRecover();
   Wire.begin();
   Wire.setClock(100000);
+#if defined(ARDUINO_ARCH_AVR)
+  Wire.setWireTimeout(25000, true);  // 25ms timeout, reset bus on timeout
+#endif
   delay(50);
 
   imuOk = initMPU();
