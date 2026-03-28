@@ -44,6 +44,7 @@ uint8_t i2cErrors = 0;
 const uint8_t I2C_ERROR_THRESHOLD = 5;
 bool imuOk = true;
 
+// Set up I2C bus, detect and initialize MPU-6050, run calibration
 void setup() {
   Serial.begin(115200);
   while (!Serial);
@@ -115,6 +116,7 @@ void setup() {
   prevTime = millis();
 }
 
+// Main loop: read sensor, detect errors/stale data, compute orientation angles
 void loop() {
   if (!imuOk) {
     Serial.println(F("IMU offline — attempting recovery"));
@@ -266,17 +268,18 @@ bool readSensor() {
   }
 
   uint8_t hi, lo;
-  hi = Wire.read(); lo = Wire.read(); rawAccX  = ((uint16_t)hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawAccY  = ((uint16_t)hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawAccZ  = ((uint16_t)hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawTemp  = ((uint16_t)hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawGyroX = ((uint16_t)hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawGyroY = ((uint16_t)hi << 8) | lo;
-  hi = Wire.read(); lo = Wire.read(); rawGyroZ = ((uint16_t)hi << 8) | lo;
+  hi = Wire.read(); lo = Wire.read(); rawAccX  = (int16_t)(((uint16_t)hi << 8) | lo);
+  hi = Wire.read(); lo = Wire.read(); rawAccY  = (int16_t)(((uint16_t)hi << 8) | lo);
+  hi = Wire.read(); lo = Wire.read(); rawAccZ  = (int16_t)(((uint16_t)hi << 8) | lo);
+  hi = Wire.read(); lo = Wire.read(); rawTemp  = (int16_t)(((uint16_t)hi << 8) | lo);
+  hi = Wire.read(); lo = Wire.read(); rawGyroX = (int16_t)(((uint16_t)hi << 8) | lo);
+  hi = Wire.read(); lo = Wire.read(); rawGyroY = (int16_t)(((uint16_t)hi << 8) | lo);
+  hi = Wire.read(); lo = Wire.read(); rawGyroZ = (int16_t)(((uint16_t)hi << 8) | lo);
 
   return true;
 }
 
+// Write a single byte to an MPU-6050 register, returns true on success
 bool writeRegister(uint8_t reg, uint8_t value) {
   Wire.beginTransmission(mpuAddr);
   Wire.write(reg);
