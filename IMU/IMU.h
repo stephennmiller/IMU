@@ -5,6 +5,7 @@
 
 class IMU {
 public:
+    /// Construct an IMU instance for the MPU-6050 at the given I2C address.
     IMU(uint8_t addr = 0x68)
         : _addr(addr),
           _rawAccX(0), _rawAccY(0), _rawAccZ(0),
@@ -25,9 +26,11 @@ public:
     bool begin();
     bool update();
 
+    /// @name Filtered orientation and calibrated sensor readings.
+    /// @{
     float roll()        const { return _roll; }
     float pitch()       const { return _pitch; }
-    float yaw()         const { return _yaw; }
+    float yaw()         const { return _yaw; }    ///< Range: +-180 degrees.
     float accX()        const { return _accX; }
     float accY()        const { return _accY; }
     float accZ()        const { return _accZ; }
@@ -35,7 +38,10 @@ public:
     float gyroY()       const { return _gyroY; }
     float gyroZ()       const { return _gyroZ; }
     float temperature() const { return _tempC; }
+    /// @}
 
+    /// @name Raw 16-bit sensor register values before calibration.
+    /// @{
     int16_t rawAccX()   const { return _rawAccX; }
     int16_t rawAccY()   const { return _rawAccY; }
     int16_t rawAccZ()   const { return _rawAccZ; }
@@ -43,7 +49,9 @@ public:
     int16_t rawGyroY()  const { return _rawGyroY; }
     int16_t rawGyroZ()  const { return _rawGyroZ; }
     int16_t rawTemp()   const { return _rawTemp; }
+    /// @}
 
+    /// True when the sensor is initialized and responding.
     bool isOk()         const { return _ok; }
 
 private:
@@ -56,9 +64,14 @@ private:
     static const uint8_t REG_ACCEL_XOUT_H  = 0x3B;
 
     // Sensor scales and filter weight
-    static constexpr float ACCEL_SCALE = 4096.0;
-    static constexpr float GYRO_SCALE  = 32.8;
+    static constexpr float ACCEL_SCALE = 4096.0;   // LSB/g   at +-8g
+    static constexpr float GYRO_SCALE  = 32.8;     // LSB/dps at +-1000 dps
     static constexpr float ALPHA       = 0.96;
+
+    // MPU-6050 register config values
+    static const uint8_t ACCEL_RANGE_8G   = 0x10;  // AFS_SEL = 2  (+-8 g)
+    static const uint8_t GYRO_RANGE_1000  = 0x10;  // FS_SEL  = 2  (+-1000 deg/s)
+    static const uint8_t DLPF_BW_44HZ    = 0x03;   // DLPF_CFG = 3 (~44 Hz bandwidth)
 
     // Timing and thresholds
     static const unsigned long SAMPLE_INTERVAL_MS   = 100;
@@ -206,9 +219,9 @@ inline bool IMU::initMPU() {
     }
     Serial.println(F("WHO_AM_I verified (0x68)."));
 
-    if (!writeRegister(REG_ACCEL_CONFIG, 0x10)) return false; // +-8g
-    if (!writeRegister(REG_GYRO_CONFIG, 0x10))  return false; // +-1000 deg/s
-    if (!writeRegister(REG_DLPF_CONFIG, 0x03))  return false; // DLPF ~44 Hz
+    if (!writeRegister(REG_ACCEL_CONFIG, ACCEL_RANGE_8G))  return false;
+    if (!writeRegister(REG_GYRO_CONFIG,  GYRO_RANGE_1000)) return false;
+    if (!writeRegister(REG_DLPF_CONFIG,  DLPF_BW_44HZ))   return false;
 
     return true;
 }
@@ -401,6 +414,10 @@ inline bool IMU::update() {
     _roll  = ALPHA * (_roll  + _gyroX * dt) + (1.0 - ALPHA) * accelRoll;
     _pitch = ALPHA * (_pitch + _gyroY * dt) + (1.0 - ALPHA) * accelPitch;
     _yaw  += _gyroZ * dt; // no accel correction for yaw (needs magnetometer)
+
+    // Normalize yaw to +-180 to prevent unbounded drift losing float precision
+    while (_yaw >  180.0) _yaw -= 360.0;
+    while (_yaw < -180.0) _yaw += 360.0;
 
     return true;
 }
