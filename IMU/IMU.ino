@@ -2,6 +2,7 @@
 
 IMU imu;
 
+/// Initialize serial output and the IMU. Halts if the sensor fails to start.
 void setup() {
   Serial.begin(115200);
   while (!Serial);
@@ -15,6 +16,8 @@ void setup() {
   Serial.println(F("AccX(g)\tAccY(g)\tAccZ(g)\tGx(d/s)\tGy(d/s)\tGz(d/s)\tRoll\tPitch\tYaw\tTemp(C)"));
 }
 
+/// Poll the IMU each iteration and print a tab-separated line of all
+/// sensor values whenever a new sample is ready.
 void loop() {
   if (imu.update()) {
     Serial.print(imu.accX(), 2);  Serial.print('\t');

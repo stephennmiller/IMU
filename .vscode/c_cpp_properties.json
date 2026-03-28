@@ -18,7 +18,9 @@
             ],
             "cStandard": "c11",
             "cppStandard": "gnu++11",
-            "intelliSenseMode": "gcc-x64"
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "${env:HOME}/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+            "compilerArgs": ["-mmcu=atmega328p"]
         },
         {
             "name": "Linux",
@@ -38,7 +40,9 @@
             ],
             "cStandard": "c11",
             "cppStandard": "gnu++11",
-            "intelliSenseMode": "gcc-x64"
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "${env:HOME}/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+            "compilerArgs": ["-mmcu=atmega328p"]
         },
         {
             "name": "Win32",
@@ -58,7 +62,9 @@
             ],
             "cStandard": "c11",
             "cppStandard": "gnu++11",
-            "intelliSenseMode": "gcc-x64"
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "${env:LOCALAPPDATA}/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+            "compilerArgs": ["-mmcu=atmega328p"]
         }
     ],
     "version": 4

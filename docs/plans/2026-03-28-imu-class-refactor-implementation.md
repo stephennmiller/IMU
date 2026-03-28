@@ -190,7 +190,7 @@ inline bool IMU::begin() {
     }
   }
   if (deviceCount == 0) {
-    Serial.println(F("No I2C devices found! Check wiring: SDA->A4, SCL->A5, VCC->5V, GND->GND"));
+    Serial.println(F("No I2C devices found! Check wiring: SDA, SCL, VCC->5V, GND->GND"));
     return false;
   }
   Serial.print(deviceCount);

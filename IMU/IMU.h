@@ -114,6 +114,9 @@ private:
 // Inline implementations
 // ---------------------------------------------------------------------------
 
+/// Initialize the IMU: recover the I2C bus, scan for an MPU-6050,
+/// configure its registers, and run a flat-and-still calibration.
+/// Returns true when the sensor is ready to produce readings.
 inline bool IMU::begin() {
     Serial.println(F("Starting IMU..."));
 
@@ -182,6 +185,7 @@ inline bool IMU::begin() {
     return true;
 }
 
+/// Wake the MPU-6050, verify WHO_AM_I, and set accel/gyro/DLPF ranges.
 inline bool IMU::initMPU() {
     if (!writeRegister(REG_PWR_MGMT_1, 0x00)) return false;
     delay(100);
@@ -209,6 +213,8 @@ inline bool IMU::initMPU() {
     return true;
 }
 
+/// Average the given number of sensor readings to compute accel/gyro
+/// zero-offsets. Assumes the sensor is flat and still (Z = 1 g).
 inline bool IMU::calibrate(int samples) {
     long axSum = 0, aySum = 0, azSum = 0;
     long gxSum = 0, gySum = 0, gzSum = 0;
@@ -241,6 +247,8 @@ inline bool IMU::calibrate(int samples) {
     return true;
 }
 
+/// Burst-read 14 bytes (accel, temp, gyro) from the MPU-6050 over I2C
+/// and store the raw 16-bit values. Returns false on any I2C error.
 inline bool IMU::readSensor() {
     Wire.beginTransmission(_addr);
     Wire.write(REG_ACCEL_XOUT_H);
@@ -264,6 +272,7 @@ inline bool IMU::readSensor() {
     return true;
 }
 
+/// Write a single byte to an MPU-6050 register. Returns true on success.
 inline bool IMU::writeRegister(uint8_t reg, uint8_t value) {
     Wire.beginTransmission(_addr);
     Wire.write(reg);
@@ -271,6 +280,8 @@ inline bool IMU::writeRegister(uint8_t reg, uint8_t value) {
     return (Wire.endTransmission() == 0);
 }
 
+/// Bit-bang up to 9 clock pulses on SCL to release an SDA line held low
+/// by a stuck slave, then generate a STOP condition.
 inline void IMU::bitBangRecover() {
     pinMode(SCL, OUTPUT);
     pinMode(SDA, INPUT_PULLUP);
@@ -297,6 +308,8 @@ inline void IMU::bitBangRecover() {
     pinMode(SCL, INPUT);
 }
 
+/// Full I2C bus recovery: bit-bang the bus, re-init Wire, and attempt
+/// to re-initialize the MPU-6050. Clears error counters on success.
 inline void IMU::recoverI2C() {
     bitBangRecover();
     Wire.begin();
@@ -315,6 +328,10 @@ inline void IMU::recoverI2C() {
     }
 }
 
+/// Sample the sensor (non-blocking, respects SAMPLE_INTERVAL_MS), apply
+/// calibration offsets, and fuse accel/gyro via a complementary filter
+/// to update roll, pitch, yaw, and temperature. Returns true when new
+/// data is available; handles I2C errors and stale-data recovery.
 inline bool IMU::update() {
     unsigned long now = millis();
 
