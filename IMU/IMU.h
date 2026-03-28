@@ -5,6 +5,7 @@
 
 class IMU {
 public:
+    /// Construct an IMU instance for the MPU-6050 at the given I2C address.
     IMU(uint8_t addr = 0x68)
         : _addr(addr),
           _rawAccX(0), _rawAccY(0), _rawAccZ(0),
@@ -25,9 +26,11 @@ public:
     bool begin();
     bool update();
 
+    /// @name Filtered orientation and calibrated sensor readings.
+    /// @{
     float roll()        const { return _roll; }
     float pitch()       const { return _pitch; }
-    float yaw()         const { return _yaw; }
+    float yaw()         const { return _yaw; }    ///< Range: +-180 degrees.
     float accX()        const { return _accX; }
     float accY()        const { return _accY; }
     float accZ()        const { return _accZ; }
@@ -35,7 +38,10 @@ public:
     float gyroY()       const { return _gyroY; }
     float gyroZ()       const { return _gyroZ; }
     float temperature() const { return _tempC; }
+    /// @}
 
+    /// @name Raw 16-bit sensor register values before calibration.
+    /// @{
     int16_t rawAccX()   const { return _rawAccX; }
     int16_t rawAccY()   const { return _rawAccY; }
     int16_t rawAccZ()   const { return _rawAccZ; }
@@ -43,7 +49,9 @@ public:
     int16_t rawGyroY()  const { return _rawGyroY; }
     int16_t rawGyroZ()  const { return _rawGyroZ; }
     int16_t rawTemp()   const { return _rawTemp; }
+    /// @}
 
+    /// True when the sensor is initialized and responding.
     bool isOk()         const { return _ok; }
 
 private:
@@ -407,9 +415,9 @@ inline bool IMU::update() {
     _pitch = ALPHA * (_pitch + _gyroY * dt) + (1.0 - ALPHA) * accelPitch;
     _yaw  += _gyroZ * dt; // no accel correction for yaw (needs magnetometer)
 
-    // Wrap yaw to +-180 to prevent unbounded drift losing float precision
-    if      (_yaw >  180.0) _yaw -= 360.0;
-    else if (_yaw < -180.0) _yaw += 360.0;
+    // Normalize yaw to +-180 to prevent unbounded drift losing float precision
+    while (_yaw >  180.0) _yaw -= 360.0;
+    while (_yaw < -180.0) _yaw += 360.0;
 
     return true;
 }
