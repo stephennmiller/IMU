@@ -271,4 +271,47 @@ inline bool IMU::writeRegister(uint8_t reg, uint8_t value) {
     return (Wire.endTransmission() == 0);
 }
 
+inline void IMU::bitBangRecover() {
+    pinMode(SCL, OUTPUT);
+    pinMode(SDA, INPUT_PULLUP);
+
+    for (uint8_t i = 0; i < 9; i++) {
+        digitalWrite(SCL, LOW);
+        delayMicroseconds(5);
+        digitalWrite(SCL, HIGH);
+        delayMicroseconds(5);
+        if (digitalRead(SDA) == HIGH) break; // SDA released
+    }
+
+    // Generate STOP: SDA low->high while SCL high
+    pinMode(SDA, OUTPUT);
+    digitalWrite(SDA, LOW);
+    delayMicroseconds(5);
+    digitalWrite(SCL, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(SDA, HIGH);
+    delayMicroseconds(5);
+
+    // Return pins to default before Wire.begin() reconfigures them
+    pinMode(SDA, INPUT);
+    pinMode(SCL, INPUT);
+}
+
+inline void IMU::recoverI2C() {
+    bitBangRecover();
+    Wire.begin();
+    Wire.setClock(100000);
+#if defined(ARDUINO_ARCH_AVR)
+    Wire.setWireTimeout(25000, true);
+#endif
+    delay(50);
+
+    _ok = initMPU();
+    if (_ok) {
+        _staleCount = 0;
+    } else {
+        Serial.println(F("Recovery failed — initMPU returned error"));
+    }
+}
+
 #endif // IMU_H
